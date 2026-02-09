@@ -2,7 +2,6 @@ zerops:
   - setup: ubuntu
     build:
       base: nodejs@20          # or nodejs@22 / latest; pick what OpenClaw needs (likely 18+)
-      os: ubuntu               # optional, but useful if you need extra apt packages
       prepareCommands:
         - sudo apt-get update
         - sudo apt-get install -y git  # if cloning submodules or extras needed
@@ -17,7 +16,6 @@ zerops:
         - .pnpm-store            # helps speed up PNPM installs on rebuilds
     run:
       base: nodejs@20
-      os: ubuntu
       ports:
         - port: 3000             # adjust if OpenClaw exposes a web UI/port; many agents don't need HTTP exposure
           httpSupport: true      # enable if it has a dashboard; otherwise remove or set false
