@@ -1,0 +1,46 @@
+zerops:
+  - setup: ubuntu
+    build:
+      base: nodejs@20          # or nodejs@22 / latest; pick what OpenClaw needs (likely 18+)
+      os: ubuntu               # optional, but useful if you need extra apt packages
+      prepareCommands:
+        - sudo apt-get update
+        - sudo apt-get install -y git  # if cloning submodules or extras needed
+      buildCommands:
+        - corepack enable        # to use pnpm reliably
+        - pnpm install           # or npm ci if not preferring PNPM
+        # If OpenClaw needs any build step (e.g. compile TS, bundle), add here:
+        # - pnpm run build
+      deployFiles: .             # deploy everything (or specify ./dist if you have a build output)
+      cache:
+        - node_modules
+        - .pnpm-store            # helps speed up PNPM installs on rebuilds
+    run:
+      base: nodejs@20
+      os: ubuntu
+      ports:
+        - port: 3000             # adjust if OpenClaw exposes a web UI/port; many agents don't need HTTP exposure
+          httpSupport: true      # enable if it has a dashboard; otherwise remove or set false
+      mount:
+        - storage: openclawdata # ← name of your Shared Storage service
+          path: /data              # mount it exactly where OPENCLAW_STATE_DIR points
+      initCommands:
+        # Optional: Ensure permissions (Zerops usually runs as zerops user)
+        - mkdir -p /data
+        - chown -R zerops:zerops /data || true
+        # If OpenClaw needs first-time init (e.g. generate config, migrate), add here
+        # - pnpm run init || true   # only if your project has such script
+      start: pnpm start          # adjust to actual start command, e.g.:
+                                 # - node openclaw.mjs
+                                 # - npm run agent
+                                 # - pnpm run start:prod
+                                 # Check your package.json "scripts"
+      envVariables:
+        NODE_ENV: production
+        OPENCLAW_PREFER_PNPM: "1"
+        OPENCLAW_STATE_DIR: "/data"
+        NODE_OPTIONS: "--max-old-space-size=1536"
+        # Add any other required env vars here, e.g.:
+        # OPENCLAW_LLM_PROVIDER: "ollama"
+        # OLLAMA_HOST: "http://ollama:11434"   (if using another service)
+        # Add secrets via Zerops GUI/secrets (don't commit them!)
