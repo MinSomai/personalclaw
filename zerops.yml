@@ -1,44 +1,44 @@
 zerops:
   - setup: ubuntu
     build:
-      base: nodejs@20          # or nodejs@22 / latest; pick what OpenClaw needs (likely 18+)
+      base: nodejs@20  # Stick with 20, solid for most setups (or bump to @22 if OpenClaw needs it)
       prepareCommands:
         - sudo apt-get update
-        - sudo apt-get install -y git  # if cloning submodules or extras needed
+        - sudo apt-get install -y git  # Keep if you need git/submodules; remove if not
+        # Add more system packages here if OpenClaw needs them (e.g. for Puppeteer/Chromium):
+        # - sudo apt-get install -y chromium-browser libnss3 libgconf-2-4
       buildCommands:
-        - corepack enable        # to use pnpm reliably
-        - pnpm install           # or npm ci if not preferring PNPM
-        # If OpenClaw needs any build step (e.g. compile TS, bundle), add here:
+        - corepack enable                  # Enables pnpm properly
+        - corepack prepare pnpm@latest --activate
+        - pnpm install --frozen-lockfile    # Clean, production-ready install
+        # If OpenClaw has a build script (e.g. TS compile), uncomment:
         # - pnpm run build
-      deployFiles: .             # deploy everything (or specify ./dist if you have a build output)
+      deployFiles: .                       # Deploys full project
       cache:
         - node_modules
-        - .pnpm-store            # helps speed up PNPM installs on rebuilds
+        - .pnpm-store                      # Speeds up future builds massively
     run:
       base: nodejs@20
-      ports:
-        - port: 3000             # adjust if OpenClaw exposes a web UI/port; many agents don't need HTTP exposure
-          httpSupport: true      # enable if it has a dashboard; otherwise remove or set false
+      # No ports needed if OpenClaw has no web UI/dashboard (remove if not exposing anything)
+      # ports:
+      #   - port: 3000
+      #     httpSupport: true
       mount:
-        - storage: openclawdata # ← name of your Shared Storage service
-          path: /data              # mount it exactly where OPENCLAW_STATE_DIR points
+        - storage: openclawdata            # ← Must EXACTLY match your Shared Storage service name (case-sensitive, no spaces/dashes usually)
+          path: /data                      # Mounts persistent storage here for state/memory
       initCommands:
-        # Optional: Ensure permissions (Zerops usually runs as zerops user)
         - mkdir -p /data
         - chown -R zerops:zerops /data || true
-        # If OpenClaw needs first-time init (e.g. generate config, migrate), add here
-        # - pnpm run init || true   # only if your project has such script
-      start: pnpm start          # adjust to actual start command, e.g.:
-                                 # - node openclaw.mjs
-                                 # - npm run agent
-                                 # - pnpm run start:prod
-                                 # Check your package.json "scripts"
+        # If first run needs setup (e.g. generate default config), add:
+        # - pnpm run setup || true
+      start: pnpm start                    # ← Confirm this matches your package.json scripts!
+                                   # Common alternatives from OpenClaw repos:
+                                   # - node openclaw.mjs
+                                   # - pnpm run agent
+                                   # - pnpm dev (for testing)
       envVariables:
         NODE_ENV: production
         OPENCLAW_PREFER_PNPM: "1"
         OPENCLAW_STATE_DIR: "/data"
         NODE_OPTIONS: "--max-old-space-size=1536"
-        # Add any other required env vars here, e.g.:
-        # OPENCLAW_LLM_PROVIDER: "ollama"
-        # OLLAMA_HOST: "http://ollama:11434"   (if using another service)
-        # Add secrets via Zerops GUI/secrets (don't commit them!)
+        # Add your LLM keys/secrets via Zerops dashboard (never commit them!)
